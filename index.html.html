@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulador Nim | IA</title>
+
+  <style>
+    :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --accent: #3b82f6;
+    --max-color: #22c55e;
+    --min-color: #ef4444;
+    --pruned: #64748b;
+    --text: #f8fafc;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.main-container {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 { margin-bottom: 5px; text-align: center; font-size: 1.8rem; }
+p.desc { color: #94a3b8; margin-top: 0; margin-bottom: 15px; text-align: center; }
+
+.status-box {
+    background: #020617;
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.95rem;
+    color: #38bdf8;
+    width: 100%;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.control-panel {
+    background: var(--panel);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+.config-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+label { font-weight: 600; font-size: 0.9rem; color: #cbd5e1; }
+
+input[type="number"], select {
+    background: #0f172a;
+    color: white;
+    border: 1px solid #475569;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+button {
+    background: #334155;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+button:hover { background: #475569; }
+.btn-primary { background: var(--accent); }
+.btn-primary:hover { background: #2563eb; }
+.btn-success { background: var(--max-color); }
+.btn-success:hover { background: #16a34a; }
+
+.tree-wrapper {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    padding: 20px 0;
+}
+
+#canvas-lines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.tree-container {
+    display: flex;
+    flex-direction: column;
+    gap: 50px;
+    position: relative;
+    z-index: 2;
+    min-width: 900px;
+}
+
+.level {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+}
+
+.node {
+    background: var(--panel);
+    border: 2px solid #334155;
+    padding: 8px 12px;
+    border-radius: 8px;
+    min-width: 80px;
+    text-align: center;
+    opacity: 0.3;
+    transform: scale(0.95);
+    transition: all 0.3s;
+}
+
+.node.visible { opacity: 1; transform: scale(1); }
+.node.evaluating { border-color: #f59e0b !important; box-shadow: 0 0 12px rgba(245, 158, 11, 0.6); }
+.node.max { border-top: 5px solid var(--max-color); }
+.node.min { border-top: 5px solid var(--min-color); }
+
+.node.pruned {
+    opacity: 0.35 !important;
+    border-color: var(--pruned) !important;
+    background: #0f172a;
+    text-decoration: line-through;
+}
+
+.node .tag { font-size: 0.68rem; color: #94a3b8; font-weight: bold; }
+.node .state { font-size: 1.1rem; font-weight: bold; margin: 3px 0; }
+.node .val { font-size: 0.85rem; color: #e2e8f0; font-weight: bold; }
+.node .ab { font-size: 0.7rem; color: #38bdf8; }
+  </style>
+
+  
+</head>
+<body>
+  <div class="main-container">
+    <h1>Simulador Interactivo de Nim</h1>
+    <p class="desc">Exploración gráfica de Minimax y Poda Alfa-Beta</p>
+
+    <!-- Caja de mensaje de bienvenida en la parte superior -->
+    <div class="status-box" id="status">
+        ¡Hola, bienvenido/a! Por favor, ingresa el nodo principal (Fila 1 y Fila 2) para comenzar.
+    </div>
+
+    <div class="control-panel">
+        <div class="config-row">
+            <div class="input-group">
+                <label>Fila 1:</label>
+                <input type="number" id="f1" value="1" min="0" max="4" style="width: 50px;">
+                <label>Fila 2:</label>
+                <input type="number" id="f2" value="3" min="0" max="4" style="width: 50px;">
+            </div>
+
+            <div class="input-group">
+                <label>Método:</label>
+                <select id="method">
+                    <option value="minimax">Minimax</option>
+                    <option value="alphabeta">Poda Alfa-Beta</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button id="btn-build" class="btn-primary">Construir Árbol</button>
+                <button id="btn-next">▶ Paso por Paso</button>
+                <button id="btn-all" class="btn-success">⚡ Resolver Todo Inmediato</button>
+                <button id="btn-reset">🔄 Reiniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tree-wrapper">
+        <canvas id="canvas-lines"></canvas>
+        <div class="tree-container" id="tree-container"></div>
+    </div>
+</div>
+
+  <script>
+    let nodeCounter = 0;
+let treeData = null;
+let executionSteps = [];
+let currentStep = 0;
+
+// 1. Construcción del Árbol de Nim
+function buildNimTree(state, player, actionText = "Raíz") {
+    const node = {
+        id: `node_${nodeCounter++}`,
+        state: [...state],
+        player: player,
+        action: actionText,
+        children: [],
+        terminal: false,
+        terminalUtil: null
+    };
+
+    // UN NODO ES TERMINAL ÚNICAMENTE SI LLEGA A [0, 0]
+    if (state[0] === 0 && state[1] === 0) {
+        node.terminal = true;
+        // Solo el estado [0,0] determina quién ganó o perdió
+        node.terminalUtil = (player === "MAX") ? -1 : 1; 
+        return node;
+    }
+
+    const nextPlayer = (player === "MAX") ? "MIN" : "MAX";
+
+    // ORDEN OBLIGATORIO DEL TALLER: Fila 1 primero, Fila 2 después
+    for (let take = 1; take <= state[0]; take++) {
+        const nextState = [state[0] - take, state[1]];
+        node.children.push(buildNimTree(nextState, nextPlayer, `F1: -${take}`));
+    }
+
+    for (let take = 1; take <= state[1]; take++) {
+        const nextState = [state[0], state[1] - take];
+        node.children.push(buildNimTree(nextState, nextPlayer, `F2: -${take}`));
+    }
+
+    return node;
+}
+
+// 2. Generación de pasos Minimax / Alfa-Beta
+function generateSteps(node, useAlphaBeta, alpha = -Infinity, beta = Infinity) {
+    executionSteps.push({ type: 'VISIT', node, alpha, beta });
+
+    // Si es estado terminal [0,0], este es el ÚNICO tipo de nodo que registra un valor +1 / -1
+    if (node.terminal) {
+        let util = node.terminalUtil;
+        executionSteps.push({ type: 'TERMINAL', node, value: util, alpha, beta });
+        return util;
+    }
+
+    if (node.player === "MAX") {
+        let val = -Infinity;
+        for (let i = 0; i < node.children.length; i++) {
+            let child = node.children[i];
+            let childVal = generateSteps(child, useAlphaBeta, alpha, beta);
+            val = Math.max(val, childVal);
+            alpha = Math.max(alpha, val);
+
+            executionSteps.push({ type: 'UPDATE', node, alpha, beta });
+
+            if (useAlphaBeta && beta <= alpha) {
+                let pruned = node.children.slice(i + 1);
+                executionSteps.push({ type: 'PRUNE', parent: node, prunedNodes: pruned });
+                break;
+            }
+        }
+        return val;
+    } else { // MIN
+        let val = Infinity;
+        for (let i = 0; i < node.children.length; i++) {
+            let child = node.children[i];
+            let childVal = generateSteps(child, useAlphaBeta, alpha, beta);
+            val = Math.min(val, childVal);
+            beta = Math.min(beta, val);
+
+            executionSteps.push({ type: 'UPDATE', node, alpha, beta });
+
+            if (useAlphaBeta && beta <= alpha) {
+                let pruned = node.children.slice(i + 1);
+                executionSteps.push({ type: 'PRUNE', parent: node, prunedNodes: pruned });
+                break;
+            }
+        }
+        return val;
+    }
+}
+
+// 3. Renderizado inicial: TODOS los nodos inician estrictamente con "v: -"
+function renderTreeUI(rootNode) {
+    const container = document.getElementById('tree-container');
+    container.innerHTML = '';
+
+    const levels = [];
+    function getLevels(n, depth = 0) {
+        if (!levels[depth]) levels[depth] = [];
+        levels[depth].push(n);
+        if (n.children) {
+            n.children.forEach(c => getLevels(c, depth + 1));
+        }
+    }
+    getLevels(rootNode);
+
+    const isAB = document.getElementById('method').value === 'alphabeta';
+
+    levels.forEach(lvl => {
+        const lvlDiv = document.createElement('div');
+        lvlDiv.className = 'level';
+        lvl.forEach(n => {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.id = `ui-${n.id}`;
+            nodeDiv.className = `node ${n.player.toLowerCase()}`;
+            nodeDiv.innerHTML = `
+                <div class="tag">${n.action} (${n.player})</div>
+                <div class="state">[${n.state.join(',')}]</div>
+                <div class="val" id="val-${n.id}">v: -</div>
+                ${isAB ? `<div class="ab" id="ab-${n.id}">α:-∞ β:∞</div>` : ''}
+            `;
+            lvlDiv.appendChild(nodeDiv);
+        });
+        container.appendChild(lvlDiv);
+    });
+
+    setTimeout(drawCanvasLines, 100);
+}
+
+// 4. Conexiones visuales con Canvas
+function drawCanvasLines() {
+    const canvas = document.getElementById('canvas-lines');
+    const wrapper = document.querySelector('.tree-wrapper');
+    if (!canvas || !wrapper) return;
+    canvas.width = wrapper.scrollWidth;
+    canvas.height = wrapper.scrollHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2;
+
+    function connect(node) {
+        const parentEl = document.getElementById(`ui-${node.id}`);
+        if (!parentEl) return;
+        const pRect = parentEl.getBoundingClientRect();
+        const wRect = wrapper.getBoundingClientRect();
+
+        const px = pRect.left + pRect.width / 2 - wRect.left;
+        const py = pRect.bottom - wRect.top;
+
+        if (node.children) {
+            node.children.forEach(child => {
+                const childEl = document.getElementById(`ui-${child.id}`);
+                if (childEl) {
+                    const cRect = childEl.getBoundingClientRect();
+                    const cx = cRect.left + cRect.width / 2 - wRect.left;
+                    const cy = cRect.top - wRect.top;
+
+                    ctx.beginPath();
+                    ctx.moveTo(px, py);
+                    ctx.lineTo(cx, cy);
+                    ctx.stroke();
+
+                    connect(child);
+                }
+            });
+        }
+    }
+    if (treeData) connect(treeData);
+}
+
+// 5. Avance Paso a Paso
+function stepForward() {
+    if (currentStep >= executionSteps.length) {
+        document.getElementById('status').innerText = "✅ Análisis completado con éxito. Evaluación de estados terminales finalizada.";
+        return;
+    }
+
+    const step = executionSteps[currentStep];
+    const isAB = document.getElementById('method').value === 'alphabeta';
+
+    document.querySelectorAll('.node').forEach(el => el.classList.remove('evaluating'));
+
+    if (step.type === 'VISIT') {
+        const el = document.getElementById(`ui-${step.node.id}`);
+        if (el) {
+            el.classList.add('visible', 'evaluating');
+            document.getElementById('status').innerText = `Explorando nodo ${step.node.player}: [${step.node.state.join(',')}] vía ${step.node.action}`;
+        }
+    } else if (step.type === 'TERMINAL') {
+        // SOLAMENTE LOS NODOS [0,0] RECIBEN EL VALOR +1 O -1
+        const el = document.getElementById(`ui-${step.node.id}`);
+        if (el) {
+            el.classList.add('visible', 'evaluating');
+            document.getElementById(`val-${step.node.id}`).innerText = `v: ${step.value > 0 ? '+' + step.value : step.value}`;
+            document.getElementById('status').innerText = `¡Estado terminal [0,0] alcanzado! Resultado de utilidad = ${step.value}`;
+        }
+    } else if (step.type === 'UPDATE') {
+        // LOS NODOS INTERMEDIOS SE MANTIENEN CON "v: -" (NO RECIBEN NÚMEROS DE VICTORIA/DERROTA)
+        const el = document.getElementById(`ui-${step.node.id}`);
+        if (el) {
+            el.classList.add('visible', 'evaluating');
+            if (isAB) {
+                const formatAlpha = step.alpha === -Infinity ? '-∞' : (step.alpha > 0 ? '+' + step.alpha : step.alpha);
+                const formatBeta = step.beta === Infinity ? '∞' : (step.beta > 0 ? '+' + step.beta : step.beta);
+                document.getElementById(`ab-${step.node.id}`).innerText = `α:${formatAlpha} β:${formatBeta}`;
+            }
+            document.getElementById('status').innerText = `Actualizando cotas α/β en nodo intermedio ${step.node.player} [${step.node.state.join(',')}].`;
+        }
+    } else if (step.type === 'PRUNE') {
+        step.prunedNodes.forEach(markPruned);
+        document.getElementById('status').innerText = `✂️ PODA ALFA-BETA: Rama descartada en nodo [${step.parent.state.join(',')}]`;
+    }
+
+    currentStep++;
+}
+
+// Nodos podados permanecen sin valor numérico (v: -)
+function markPruned(node) {
+    const el = document.getElementById(`ui-${node.id}`);
+    if (el) {
+        el.classList.add('pruned');
+        const valEl = document.getElementById(`val-${node.id}`);
+        if (valEl) valEl.innerText = "v: -";
+    }
+    if (node.children) node.children.forEach(markPruned);
+}
+
+// Eventos de Botones
+document.getElementById('btn-build').addEventListener('click', () => {
+    nodeCounter = 0;
+    executionSteps = [];
+    currentStep = 0;
+
+    const f1 = parseInt(document.getElementById('f1').value) || 0;
+    const f2 = parseInt(document.getElementById('f2').value) || 0;
+    const useAB = document.getElementById('method').value === 'alphabeta';
+
+    treeData = buildNimTree([f1, f2], "MAX");
+    renderTreeUI(treeData);
+    generateSteps(treeData, useAB);
+
+    document.getElementById('status').innerText = `Árbol construido para [${f1}, ${f2}]. Haz clic en "Paso por Paso" o "Resolver Todo Inmediato".`;
+});
+
+document.getElementById('btn-next').addEventListener('click', stepForward);
+
+document.getElementById('btn-all').addEventListener('click', () => {
+    while (currentStep < executionSteps.length) {
+        stepForward();
+    }
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+    document.getElementById('tree-container').innerHTML = '';
+    const canvas = document.getElementById('canvas-lines');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    document.getElementById('status').innerText = "¡Hola, bienvenido/a! Por favor, ingresa el nodo principal (Fila 1 y Fila 2) para comenzar.";
+});
+
+window.addEventListener('resize', drawCanvasLines);
+  </script>
+</body>
+</html>
